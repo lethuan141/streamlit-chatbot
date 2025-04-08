@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+from google import generativeai as genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 
 # Khởi tạo ứng dụng Streamlit
