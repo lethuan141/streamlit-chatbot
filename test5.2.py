@@ -1,55 +1,103 @@
 import streamlit as st
-from google import generativeai as genai
-from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+import google.generativeai as genai
+import requests
+import os
+from datetime import datetime
+import pytz
 
-# Khởi tạo ứng dụng Streamlit
-st.title("Google Gemini Chatbot")
+# 🔐 API key từ biến môi trường
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
-# Lưu trữ lịch sử hội thoại
+# ⚙️ Cấu hình Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+
+# 🕒 Lấy giờ Việt Nam chính xác
+def get_current_time_vietnam():
+    try:
+        tz = pytz.timezone("Asia/Ho_Chi_Minh")
+        now = datetime.now(tz)
+        return now.strftime("%H:%M:%S")
+    except:
+        return None
+
+# 📆 Lấy ngày hôm nay theo tiếng Việt
+def get_current_date_vietnam():
+    try:
+        tz = pytz.timezone("Asia/Ho_Chi_Minh")
+        now = datetime.now(tz)
+        weekdays = {
+            0: "Thứ Hai", 1: "Thứ Ba", 2: "Thứ Tư",
+            3: "Thứ Năm", 4: "Thứ Sáu", 5: "Thứ Bảy", 6: "Chủ Nhật"
+        }
+        weekday = weekdays[now.weekday()]
+        return f"Hôm nay là {weekday}, ngày {now.day} tháng {now.month} năm {now.year}."
+    except:
+        return None
+
+# 🌡️ Lấy thời tiết
+def get_weather(city):
+    try:
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric&lang=vi"
+        response = requests.get(url).json()
+        if response.get("cod") != 200:
+            return None
+        temp = response["main"]["temp"]
+        weather = response["weather"][0]["description"]
+        return f"Nhiệt độ hiện tại ở {city.title()} là {temp}°C, trời {weather}."
+    except:
+        return None
+
+# 🚀 Giao diện
+st.set_page_config(page_title="Gemini Chatbot Biết Thời Gian & Thời Tiết", page_icon="🌤️")
+st.title("🤖 Gemini Chatbot Biết Thời Gian & Thời Tiết")
+
+# Lưu lịch sử chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Hiển thị lịch sử hội thoại
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+# Hiển thị lịch sử
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# Ô nhập truy vấn
-query = st.chat_input("Nhập câu hỏi của bạn...")
+# Ô nhập câu hỏi
+query = st.chat_input("Nhập câu hỏi...")
 
-# Xử lý truy vấn khi người dùng gửi
 if query:
-    # Hiển thị câu hỏi của người dùng trong lịch sử hội thoại
     st.session_state.messages.append({"role": "user", "content": query})
     with st.chat_message("user"):
-        st.write(query)
+        st.markdown(query)
 
-    # Gửi yêu cầu đến API Gemini
-    client = genai.Client(api_key="AIzaSyBBRBfkvzjngvok5MT6yqveb7hY6Gk8b7k")
-    model_id = "gemini-2.0-flash"
-    
-    google_search_tool = Tool(
+    query_lower = query.lower()
+    reply = ""
 
+    # Nếu hỏi về thời tiết
+    if "nhiệt độ" in query_lower or "thời tiết" in query_lower:
+        for word in query_lower.split():
+            result = get_weather(word)
+            if result:
+                reply = result
+                break
 
-        google_search=GoogleSearch()
-    )
-    
-    response = client.models.generate_content(
-        model=model_id,
-        contents=query,
-        config=GenerateContentConfig(
-            tools=[google_search_tool],
-            response_modalities=["TEXT"],
-        )
-    )
+    # Nếu hỏi về thời gian hoặc ngày hôm nay
+    elif "mấy giờ" in query_lower or "thời gian" in query_lower or "hôm nay là" in query_lower or "ngày mấy" in query_lower:
+        if "ngày" in query_lower or "thứ" in query_lower:
+            reply = get_current_date_vietnam()
+        elif "giờ" in query_lower or "mấy giờ" in query_lower:
+            time_now = get_current_time_vietnam()
+            reply = f"Bây giờ là {time_now} (giờ Việt Nam)"
+        else:
+            # Nếu không rõ → trả cả ngày + giờ
+            date = get_current_date_vietnam()
+            time = get_current_time_vietnam()
+            reply = f"{date}, bây giờ là {time} (giờ Việt Nam)"
 
-    # Nhận phản hồi từ Gemini
-    bot_reply = "\n".join([part.text for part in response.candidates[0].content.parts])
+    # Nếu không phải thời gian/thời tiết → dùng Gemini
+    if not reply:
+        reply = model.generate_content(query).text
 
-    # Hiển thị phản hồi của bot trong lịch sử hội thoại
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
     with st.chat_message("assistant"):
-        st.write(bot_reply)
-#để chạy trên localhost , copy lệnh này vào terminal: python -m streamlit run test5.2.py
-
-#AIzaSyAtTQhC6EX50GmcwkL8so5q0lswPwMojiM
+        st.markdown(reply)
+    st.session_state.messages.append({"role": "assistant", "content": reply})
