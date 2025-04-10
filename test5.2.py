@@ -1,13 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 import requests
-import os
 from datetime import datetime
 import pytz
 
-# 🔐 API key từ biến môi trường
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+# 🔐 API key gắn trực tiếp
+GEMINI_API_KEY = "AIzaSyBBRBfkvzjngvok5MT6yqveb7hY6Gk8b7k"
+WEATHER_API_KEY = "e7c8cefb28a5ab6d805c8bfe89f59375"
 
 # ⚙️ Cấu hình Gemini
 genai.configure(api_key=GEMINI_API_KEY)
