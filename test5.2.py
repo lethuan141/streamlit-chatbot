@@ -49,8 +49,8 @@ def get_weather(city):
         return None
 
 # 🚀 Giao diện
-st.set_page_config(page_title="Gemini Chatbot Biết Thời Gian & Thời Tiết", page_icon="🌤️")
-st.title("🤖 Gemini Chatbot Biết Thời Gian & Thời Tiết")
+st.set_page_config(page_title="Gemini Chatbot ", page_icon="🌤️")
+st.title("🤖 Gemini Chatbot ")
 
 # Lưu lịch sử chat
 if "messages" not in st.session_state:
