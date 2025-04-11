@@ -1,5 +1,5 @@
 streamlit
 requests
-google.generativeai as genai
+google-generativeai
 pytz
 timezonefinder
